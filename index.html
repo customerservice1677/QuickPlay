@@ -1,55 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="monetag" content="12289c983badd907bdbc5f44f4948e4f">
+  <script src="https://fpyf8.com/88/tag.min.js" data-zone="149558" async data-cfasync="false"></script>
+  <title>QuickPlayZone</title>
+  <style>
+    :root {
+      --bg: #f9f9fb;
+      --accent: #007aff;
+      --text: #111;
+      --card: #fff;
+      --border: #ddd;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5vw 3vw;
+    }
+    h1 {
+      font-size: 6vw;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    select, button {
+      appearance: none;
+      padding: 3vw 4vw;
+      margin: 10px;
+      font-size: 4vw;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      width: 90vw;
+      max-width: 400px;
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-weight: 500;
+      transition: 0.2s ease;
+    }
+    button:hover {
+      background: #005ce6;
+    }
+    #scoreDisplay {
+      margin: 10px;
+      font-size: 4vw;
+    }
+    #gameArea {
+      background: var(--card);
+      border-radius: var(--radius);
+      width: 90vw;
+      max-width: 400px;
+      height: 90vw;
+      max-height: 400px;
+      margin: 20px 0;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .target, .dodger, .block, .math-box, .flash-box {
+      position: absolute;
+    }
+    .target {
+      width: 8vw;
+      height: 8vw;
+      max-width: 30px;
+      max-height: 30px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .dodger {
+      width: 13vw;
+      height: 5vw;
+      max-width: 50px;
+      max-height: 20px;
+      background: var(--accent);
+      bottom: 0;
+      border-radius: 6px;
+    }
+    .block {
+      width: 8vw;
+      height: 8vw;
+      max-width: 30px;
+      max-height: 30px;
+      background: #ff3b30;
+      top: 0;
+      border-radius: 6px;
+    }
+    .math-box, .flash-box {
+      color: var(--accent);
+      font-size: 5vw;
+      text-align: center;
+      font-weight: 600;
+    }
+    footer {
+      margin-top: 30px;
+      font-size: 3vw;
+      color: #999;
+    }
+    @media (min-width: 600px) {
+      h1 { font-size: 2em; }
+      select, button { font-size: 1em; padding: 12px 16px; }
+      #scoreDisplay { font-size: 1.1em; }
+      .math-box, .flash-box { font-size: 1.6em; }
+      footer { font-size: 0.85em; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 QuickPlayZone</h1>
+  <select id="gameSelector">
+    <option value="click">Click Rush</option>
+    <option value="dodge">Dodge Dash</option>
+    <option value="math">Speed Math Duel</option>
+    <option value="flash">Memory Flash</option>
+  </select>
+  <p id="scoreDisplay">Score: 0</p>
+  <div id="gameArea"></div>
+  <button id="startBtn">Start Game</button>
+  <footer>Designed to feel amazing ✨</footer>
 
-      <meta name="monetag" content="12289c983badd907bdbc5f44f4948e4f">
-      <script src="https://fpyf8.com/88/tag.min.js" data-zone="149558" async data-cfasync="false"></script>
-    <title>Quick Play - Play & Win</title>
+  <script>
+    const gameArea = document.getElementById('gameArea');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const startBtn = document.getElementById('startBtn');
+    const gameSelector = document.getElementById('gameSelector');
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Play - Play & Win</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+    let score = 0, playing = false, timer;
+    let target, dodger, blocks = [], flashSequence = [], userIndex = 0, mathAnswer;
+
+    function resetGame() {
+      clearInterval(timer);
+      clearTimeout(timer);
+      document.onkeydown = null;
+      document.onclick = null;
+      gameArea.innerHTML = '';
+      score = 0;
+      scoreDisplay.textContent = 'Score: 0';
+      blocks = [];
+    }
+
+    function endGame(msg = "Game Over!") {
+      playing = false;
+      clearTimeout(timer);
+      clearInterval(timer);
+      alert(`${msg} Final Score: ${score}`);
+      startBtn.disabled = false;
+      resetGame();
+    }
+
+    function startGame() {
+      resetGame();
+      playing = true;
+      startBtn.disabled = true;
+      let game = gameSelector.value;
+      if (game === 'click') startClickRush();
+      else if (game === 'dodge') startDodgeDash();
+      else if (game === 'math') startMathDuel();
+      else if (game === 'flash') startMemoryFlash();
+    }
+
+    function startClickRush() {
+      function spawn() {
+        if (!playing) return;
+        if (target) target.remove();
+        target = document.createElement('div');
+        target.className = 'target';
+        target.style.left = `${Math.random() * 290}px`;
+        target.style.top = `${Math.random() * 290}px`;
+        target.onclick = () => {
+          score++;
+          scoreDisplay.textContent = `Score: ${score}`;
+          spawn();
         }
+        gameArea.appendChild(target);
+      }
+      spawn();
+      timer = setTimeout(() => endGame("Time's up!"), 15000);
+    }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #1111FF 0%, #00FF3d 100%);
-            min-height: 100vh;
-            color: white;
-            overflow-x: hidden;
+    function startDodgeDash() {
+      dodger = document.createElement('div');
+      dodger.className = 'dodger';
+      dodger.style.left = '130px';
+      gameArea.appendChild(dodger);
+
+      document.onkeydown = e => {
+        let left = parseInt(dodger.style.left);
+        if (e.key === 'ArrowLeft') dodger.style.left = `${Math.max(0, left - 20)}px`;
+        if (e.key === 'ArrowRight') dodger.style.left = `${Math.min(270, left + 20)}px`;
+      }
+
+      function dropBlock() {
+        const b = document.createElement('div');
+        b.className = 'block';
+        b.style.left = `${Math.random() * 290}px`;
+        b.style.top = '0px';
+        gameArea.appendChild(b);
+        blocks.push(b);
+      }
+
+      function moveBlocks() {
+        blocks.forEach((b, i) => {
+          let top = parseInt(b.style.top);
+          b.style.top = `${top + 5}px`;
+          if (top > 290) {
+            b.remove();
+            blocks.splice(i, 1);
+            score++;
+            scoreDisplay.textContent = `Score: ${score}`;
+          }
+          let bLeft = parseInt(b.style.left);
+          let dLeft = parseInt(dodger.style.left);
+          if (top + 30 > 300 && bLeft < dLeft + 50 && bLeft + 30 > dLeft) {
+            endGame("You got hit!");
+          }
+        });
+      }
+
+      timer = setInterval(() => {
+        dropBlock();
+        moveBlocks();
+      }, 200);
+      setTimeout(() => endGame("Time's up!"), 150000);
+    }
+
+    function startMathDuel() {
+      const box = document.createElement('div');
+      box.className = 'math-box';
+      gameArea.appendChild(box);
+
+      function ask() {
+        const a = Math.floor(Math.random() * 10);
+        const b = Math.floor(Math.random() * 10);
+        mathAnswer = a + b;
+        box.textContent = `${a} + ${b} = ?`;
+      }
+
+      document.onkeydown = e => {
+        if (!playing || isNaN(e.key)) return;
+        if (parseInt(e.key) === mathAnswer) {
+          score++;
+          scoreDisplay.textContent = `Score: ${score}`;
+          ask();
+        } else {
+          endGame("Wrong answer!");
         }
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
+      ask();
+      timer = setTimeout(() => endGame("Time's up!"), 15000);
+    }
+
+    function startMemoryFlash() {
+      const box = document.createElement('div');
+      box.className = 'flash-box';
+      gameArea.appendChild(box);
+      flashSequence = Array.from({length: 5}, () => Math.floor(Math.random() * 10));
+      userIndex = 0;
+
+      function show(i = 0) {
+        if (i < flashSequence.length) {
+          box.textContent = flashSequence[i];
+          setTimeout(() => {
+            box.textContent = '';
+            setTimeout(() => show(i + 1), 300);
+          }, 600);
+        } else {
+          box.textContent = 'Now type it!';
         }
+      }
 
-        header {
-            padding: 2rem 0;
-            text-align: center;
-            position: relative;
+      document.onkeydown = e => {
+        if (!playing || isNaN(e.key)) return;
+        const input = parseInt(e.key);
+        if (input === flashSequence[userIndex]) {
+          userIndex++;
+          if (userIndex === flashSequence.length) {
+            score++;
+            scoreDisplay.textContent = `Score: ${score}`;
+            flashSequence = Array.from({length: 5}, () => Math.floor(Math.random() * 10));
+            userIndex = 0;
+            show();
+          }
+        } else {
+          endGame("Wrong memory input!");
         }
+      }
 
-        .logo {
-            font-size: 3rem;
-            font-weight: 900;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+      show();
+      timer = setTimeout(() => endGame("Time's up!"), 20000);
+    }
 
-6m
- • 
-7 minutes ago
-Port :80 opened on
+    startBtn.onclick = startGame;
+  </script>
+</body>
 
-
-Open a new tab to test authentication and file uploads.
+</html>
